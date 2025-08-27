@@ -11,9 +11,6 @@
 #include "cuckoo-orig/src/cuckoo/lean.hpp"
 #include "cuckoo-orig/src/crypto/blake2b-ref.c"
 
-// Use Tromp's siphash implementation
-#include "cuckoo-orig/src/cuckoo/cuckoo.h"
-
 // Thread context for parallel solving
 struct solver_thread_ctx {
     int id;
@@ -102,11 +99,7 @@ int cuckoo_verify(const uint8_t* header, uint32_t header_len, uint32_t nonce, co
     memcpy(headernonce + header_len, &nonce, sizeof(nonce));
     
     // Generate siphash keys
-    blake2b((void*)&keys, sizeof(keys), headernonce, header_len + sizeof(nonce), 0, 0);
-    
-    // Create cuckoo instance for verification
-    cuckoo_ctx verifier(1, 0, 1);
-    verifier.setheadernonce(headernonce, header_len + sizeof(nonce), 0);
+    setheader(headernonce, header_len + sizeof(nonce), &keys);
     
     // Verify the proof
     u32 uvs[2*PROOFSIZE];
@@ -115,8 +108,8 @@ int cuckoo_verify(const uint8_t* header, uint32_t header_len, uint32_t nonce, co
     for (u32 n = 0; n < PROOFSIZE; n++) {
         if (n > 0 && proof[n] <= proof[n-1])
             return 0;
-        u32 node0 = verifier.graph.sipnode(proof[n], 0);
-        u32 node1 = verifier.graph.sipnode(proof[n], 1);
+        u32 node0 = sipnode(&keys, proof[n], 0);
+        u32 node1 = sipnode(&keys, proof[n], 1);
         uvs[2*n] = node0;
         uvs[2*n+1] = node1;
         xor0 ^= node0;

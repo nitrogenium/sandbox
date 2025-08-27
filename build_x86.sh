@@ -44,8 +44,8 @@ fi
 export CC=gcc
 export CXX=g++
 export CGO_ENABLED=1
-export CGO_CFLAGS="-O3 -march=skylake -mtune=skylake $CPU_FLAGS"
-export CGO_CXXFLAGS="-O3 -march=skylake -mtune=skylake $CPU_FLAGS -std=c++14"
+export CGO_CFLAGS="-O3 -march=native $CPU_FLAGS"
+export CGO_CXXFLAGS="-O3 -march=native $CPU_FLAGS -std=c++14"
 export CGO_LDFLAGS="-lpthread"
 
 echo
@@ -56,7 +56,7 @@ cd solver/tromp
 make clean 2>/dev/null || true
 
 # Build with x86 optimizations
-make ARCH_FLAGS="-march=skylake -mtune=skylake $CPU_FLAGS" CPPFLAGS=""
+make ARCH_FLAGS="-march=native $CPU_FLAGS" CPPFLAGS=""
 
 if [ ! -f libcuckoo_lean.a ]; then
     echo "Error: Failed to build C++ solver"
