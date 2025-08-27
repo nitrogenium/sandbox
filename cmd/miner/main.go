@@ -177,7 +177,7 @@ func (m *Miner) mineWorker(workerID int) {
 
 		// Mine with nonce range
 		baseNonce := uint32(workerID) * (1 << 24) // Partition nonce space
-		nonceRange := uint32(1 << 16)             // Check 65536 nonces
+		nonceRange := uint32(1 << 14)             // Check 16384 nonces for faster stats
 
 		solutions := solver.Solve(baseNonce, nonceRange)
 
@@ -186,7 +186,18 @@ func (m *Miner) mineWorker(workerID int) {
 
 			// Verify solution meets target
 			hash := pkgsolver.HashSolution(header, baseNonce, sol.Nonce)
-			target := stratum.DifficultyToTarget(1.0) // TODO: Use actual difficulty
+			// Use target from compact nBits if possible
+			var target []byte
+			if len(work.NBits) == 8 {
+				var compact uint32
+				_, err := fmt.Sscanf(work.NBits, "%08x", &compact)
+				if err == nil {
+					target = stratum.CompactToTarget(compact)
+				}
+			}
+			if target == nil {
+				target = stratum.DifficultyToTarget(1.0)
+			}
 
 			if stratum.CheckTarget(hash[:], target) {
 				// Submit solution
