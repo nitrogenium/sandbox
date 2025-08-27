@@ -280,6 +280,9 @@ func (c *Client) readLoop() {
 			return
 		}
 
+		// Log raw line for debugging
+		c.logger.Debug("Stratum RAW", zap.String("line", line))
+
 		// Try to parse as response
 		var resp Response
 		if err := json.Unmarshal([]byte(line), &resp); err == nil && resp.ID != 0 {
@@ -290,6 +293,8 @@ func (c *Client) readLoop() {
 		// Try to parse as notification
 		var notif Notification
 		if err := json.Unmarshal([]byte(line), &notif); err == nil {
+			// Log notification body
+			c.logger.Debug("Stratum NOTIFY", zap.String("method", notif.Method), zap.Any("params", notif.Params))
 			c.handleNotification(&notif)
 			continue
 		}
