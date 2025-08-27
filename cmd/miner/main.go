@@ -175,6 +175,7 @@ func (m *Miner) mineWorker(workerID int) {
 			continue
 		}
 		m.logger.Debug("Header inputs", zap.String("coinbase", coinbaseHex), zap.String("merkle", merkleHex))
+		m.logger.Debug("Header hex", zap.String("header", hex.EncodeToString(header)))
 
 		// Debug: check header
 		if len(header) != 80 {
