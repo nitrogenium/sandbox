@@ -1,16 +1,28 @@
 # Makefile for testing Tromp's solver directly
 
 CXX = g++
+CC  = gcc
 CXXFLAGS = -g -O0 -march=native -std=c++14 -Wall -pthread
+CFLAGS   = -g -O0 -march=native -Wall
 INCLUDES = -I. -Icuckoo-orig/src -Icuckoo-orig/src/crypto
 
 test_tromp: test_tromp.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) test_tromp.cpp -o test_tromp
 
+# Isolated C wrapper test
+libcuckoo_lean.a: cuckoo_lean.o
+	ar rcs $@ $^
+
+cuckoo_lean.o: cuckoo_lean.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+test_solver: test_solver.c libcuckoo_lean.a
+	$(CC) $(CFLAGS) $(INCLUDES) test_solver.c -L. -lcuckoo_lean -lstdc++ -lpthread -o test_solver
+
 run: test_tromp
 	./test_tromp
 
 clean:
-	rm -f test_tromp
+	rm -f test_tromp test_solver libcuckoo_lean.a cuckoo_lean.o
 
 .PHONY: run clean

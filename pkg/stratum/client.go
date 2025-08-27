@@ -51,6 +51,9 @@ type Client struct {
 	// Channels
 	stopCh chan struct{}
 	workCh chan *Work
+
+	// Difficulty
+	difficulty float64
 }
 
 // Work represents mining job from pool
@@ -67,6 +70,7 @@ type Work struct {
 	ExtraNonce1     string
 	ExtraNonce2Size int
 	Target          []byte
+	difficulty      float64
 }
 
 // Request represents JSON-RPC request
@@ -363,8 +367,9 @@ func (c *Client) handleMiningNotify(params []interface{}) {
 func (c *Client) handleSetDifficulty(params []interface{}) {
 	if len(params) > 0 {
 		if diff, ok := params[0].(float64); ok {
+			c.difficulty = diff
 			c.logger.Info("Difficulty set", zap.Float64("difficulty", diff))
-			// TODO: Update target calculation
+			// target calculation is handled by miner using this value
 		}
 	}
 }
@@ -397,6 +402,11 @@ func (c *Client) reconnect() {
 		}
 		break
 	}
+}
+
+// GetDifficulty returns the last set pool difficulty
+func (c *Client) GetDifficulty() float64 {
+	return c.difficulty
 }
 
 // call makes RPC call

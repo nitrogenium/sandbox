@@ -1,35 +1,32 @@
-// Simple test program for solver
 #include "cuckoo_lean.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 int main() {
-    printf("Testing Cuckoo solver...\n");
-    
+    printf("=== Isolated Cuckoo Solver Test ===\n");
+
     solver_ctx ctx;
     cuckoo_init(&ctx);
-    
-    printf("Initialized context:\n");
-    printf("  nthreads: %u\n", ctx.nthreads);
-    printf("  nonce_range: %u\n", ctx.nonce_range);
-    
-    // Set test header
+
+    printf("nthreads=%u nonce_range=%u\n", ctx.nthreads, ctx.nonce_range);
+
+    // Prepare 80-byte header filled with zeros except a marker
     uint8_t header[80];
-    memset(header, 0, 80);
-    strcpy((char*)header, "TEST HEADER");
-    
-    printf("Setting header...\n");
+    memset(header, 0, sizeof(header));
+    memcpy(header, "TEST-HEADER", 11);
+
     cuckoo_setheader(&ctx, header, 80);
-    
-    printf("Header set successfully\n");
-    printf("Attempting to solve (nonce 0, range 1)...\n");
-    
+
+    ctx.nthreads = 1;
     ctx.nonce = 0;
     ctx.nonce_range = 1;
-    ctx.nthreads = 1;
-    
-    int solutions = cuckoo_solve(&ctx);
-    printf("Solutions found: %d\n", solutions);
-    
+
+    int sols = cuckoo_solve(&ctx);
+    printf("cuckoo_solve returned %d\n", sols);
+
+    // Try abort test quickly (should be no-op after return)
+    cuckoo_abort(&ctx);
+
     return 0;
 }

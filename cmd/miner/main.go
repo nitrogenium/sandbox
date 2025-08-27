@@ -195,13 +195,19 @@ func (m *Miner) mineWorker(workerID int) {
 
 			// Verify solution meets target
 			hash := pkgsolver.HashSolution(header, baseNonce, sol.Nonce)
-			// Use target from compact nBits if possible
+			// Prefer pool difficulty target; fallback to compact nBits
 			var target []byte
-			if len(work.NBits) == 8 {
-				var compact uint32
-				_, err := fmt.Sscanf(work.NBits, "%08x", &compact)
-				if err == nil {
-					target = stratum.CompactToTarget(compact)
+			poolDiff := m.client.GetDifficulty()
+			if poolDiff > 0 {
+				target = stratum.DifficultyToTarget(poolDiff)
+			}
+			if target == nil {
+				if len(work.NBits) == 8 {
+					var compact uint32
+					_, err := fmt.Sscanf(work.NBits, "%08x", &compact)
+					if err == nil {
+						target = stratum.CompactToTarget(compact)
+					}
 				}
 			}
 			if target == nil {
