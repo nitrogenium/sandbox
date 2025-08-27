@@ -336,6 +336,16 @@ func (c *Client) handleMiningNotify(params []interface{}) {
 		return
 	}
 
+	// Wait briefly for subscribe response to populate extranonce1/size
+	if c.extraNonce1 == "" || c.extraNonce2Size == 0 {
+		for i := 0; i < 20; i++ { // up to ~1s total
+			if c.extraNonce1 != "" && c.extraNonce2Size > 0 {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
+
 	work := &Work{
 		JobID:           params[0].(string),
 		PrevHash:        params[1].(string),
