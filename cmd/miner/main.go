@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"os"
@@ -177,6 +180,17 @@ func (m *Miner) mineWorker(workerID int) {
 			m.logger.Error("Invalid header length", zap.Int("length", len(header)))
 			continue
 		}
+
+		// Debug: log SHA256d(header) and siphash keys k0..k3 (LE)
+		h1 := sha256.Sum256(header)
+		h2 := sha256.Sum256(h1[:])
+		k0 := binary.LittleEndian.Uint64(h2[0:8])
+		k1 := binary.LittleEndian.Uint64(h2[8:16])
+		k2 := binary.LittleEndian.Uint64(h2[16:24])
+		k3 := binary.LittleEndian.Uint64(h2[24:32])
+		m.logger.Debug("Header digest",
+			zap.String("sha256d", hex.EncodeToString(h2[:])),
+			zap.Uint64("k0", k0), zap.Uint64("k1", k1), zap.Uint64("k2", k2), zap.Uint64("k3", k3))
 
 		// Update nTime if needed
 		ntime := work.NTime
