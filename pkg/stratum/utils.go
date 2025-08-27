@@ -53,11 +53,11 @@ func BuildHeader(work *Work, extraNonce2 string) ([]byte, error) {
 
 	// Build 80-byte header
 	header := make([]byte, 80)
-	copy(header[0:4], reverseBytes(version))   // Version
-	copy(header[4:36], reverseBytes(prevHash)) // Previous block hash
-	copy(header[36:68], merkleRoot)            // Merkle root
-	copy(header[68:72], reverseBytes(ntime))   // Timestamp
-	copy(header[72:76], reverseBytes(nbits))   // Bits
+	copy(header[0:4], reverseBytes(version))      // Version
+	copy(header[4:36], reverseBytes(prevHash))    // Previous block hash
+	copy(header[36:68], reverseBytes(merkleRoot)) // Merkle root (little-endian in header)
+	copy(header[68:72], reverseBytes(ntime))      // Timestamp
+	copy(header[72:76], reverseBytes(nbits))      // Bits
 	// Nonce (76:80) will be filled by miner
 
 	return header, nil
@@ -125,7 +125,7 @@ func CheckTarget(hash, target []byte) bool {
 // GenerateExtraNonce2 generates extraNonce2 of required size
 func GenerateExtraNonce2(size int, counter uint64) string {
 	bytes := make([]byte, size)
-	
+
 	// Write counter bytes, handling cases where size < 8
 	if size >= 8 {
 		binary.LittleEndian.PutUint64(bytes, counter)
@@ -135,7 +135,7 @@ func GenerateExtraNonce2(size int, counter uint64) string {
 		binary.LittleEndian.PutUint64(counterBytes, counter)
 		copy(bytes, counterBytes[:size])
 	}
-	
+
 	return hex.EncodeToString(bytes)
 }
 

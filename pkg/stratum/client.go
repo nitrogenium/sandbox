@@ -3,14 +3,13 @@ package stratum
 
 import (
 	"bufio"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math/bits"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
-	"unsafe"
 
 	"go.uber.org/zap"
 )
@@ -241,7 +240,7 @@ func (c *Client) SubmitWork(work *Work, nonce2 string, nTime string, nonce uint3
 			work.JobID,
 			nonce2,
 			nTime,
-			fmt.Sprintf("%08x", binary.LittleEndian.Uint32((*[4]byte)(unsafe.Pointer(&nonce))[:])),
+			fmt.Sprintf("%08x", bits.ReverseBytes32(nonce)),
 			solStr,
 		},
 	}
