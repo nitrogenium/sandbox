@@ -11,8 +11,11 @@
 #include "cuckoo-orig/src/cuckoo/lean.hpp"
 #include "cuckoo-orig/src/crypto/blake2b-ref.c"
 
+// Use Tromp's siphash implementation
+#include "cuckoo-orig/src/cuckoo/cuckoo.h"
+
 // Thread context for parallel solving
-struct thread_ctx {
+struct solver_thread_ctx {
     int id;
     cuckoo_ctx* ctx;
     pthread_t thread;
@@ -21,12 +24,11 @@ struct thread_ctx {
 // Wrapper context that includes Tromp's context
 struct internal_ctx {
     cuckoo_ctx* tromp_ctx;
-    thread_ctx* threads;
+    solver_thread_ctx* threads;
     solver_ctx* api_ctx;
 };
 
-// Global storage for internal contexts
-static internal_ctx* g_internal_ctx = NULL;
+// Global storage for internal contexts (removed - not needed)
 
 extern "C" {
 
@@ -52,7 +54,7 @@ int cuckoo_solve(solver_ctx* ctx) {
     ictx->tromp_ctx = new cuckoo_ctx(ctx->nthreads, ntrims, MAXSOLS);
     
     // Allocate thread contexts
-    ictx->threads = new thread_ctx[ctx->nthreads];
+    ictx->threads = new solver_thread_ctx[ctx->nthreads];
     
     ctx->solutions = 0;
     
@@ -63,14 +65,14 @@ int cuckoo_solve(solver_ctx* ctx) {
         ictx->tromp_ctx->barry.clear();
         
         // Launch threads
-        for (int t = 0; t < ctx->nthreads; t++) {
+        for (uint32_t t = 0; t < ctx->nthreads; t++) {
             ictx->threads[t].id = t;
             ictx->threads[t].ctx = ictx->tromp_ctx;
             pthread_create(&ictx->threads[t].thread, NULL, worker, (void*)&ictx->threads[t]);
         }
         
         // Wait for threads
-        for (int t = 0; t < ctx->nthreads; t++) {
+        for (uint32_t t = 0; t < ctx->nthreads; t++) {
             pthread_join(ictx->threads[t].thread, NULL);
         }
         
@@ -102,6 +104,10 @@ int cuckoo_verify(const uint8_t* header, uint32_t header_len, uint32_t nonce, co
     // Generate siphash keys
     blake2b((void*)&keys, sizeof(keys), headernonce, header_len + sizeof(nonce), 0, 0);
     
+    // Create cuckoo instance for verification
+    cuckoo_ctx verifier(1, 0, 1);
+    verifier.setheadernonce(headernonce, header_len + sizeof(nonce), 0);
+    
     // Verify the proof
     u32 uvs[2*PROOFSIZE];
     u32 xor0 = 0, xor1 = 0;
@@ -109,9 +115,8 @@ int cuckoo_verify(const uint8_t* header, uint32_t header_len, uint32_t nonce, co
     for (u32 n = 0; n < PROOFSIZE; n++) {
         if (n > 0 && proof[n] <= proof[n-1])
             return 0;
-        u32 edge = sipnode(&keys, proof[n], 0);
-        u32 node0 = edge & EDGEMASK;
-        u32 node1 = (edge >> 32) & EDGEMASK;
+        u32 node0 = verifier.graph.sipnode(proof[n], 0);
+        u32 node1 = verifier.graph.sipnode(proof[n], 1);
         uvs[2*n] = node0;
         uvs[2*n+1] = node1;
         xor0 ^= node0;

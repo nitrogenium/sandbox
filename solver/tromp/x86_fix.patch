@@ -1,0 +1,13 @@
+# Patch file for x86_64 compilation issues
+# Apply with: patch -p0 < x86_fix.patch
+
+--- cuckoo_lean.cpp.orig
++++ cuckoo_lean.cpp
+@@ -95,7 +95,6 @@
+ int cuckoo_verify(const uint8_t* header, uint32_t header_len, uint32_t nonce, const uint32_t* proof) {
+     siphash_keys keys;
+     char headernonce[88];
+-    
+     // Prepare header with nonce
+     memcpy(headernonce, header, header_len);
+     memcpy(headernonce + header_len, &nonce, sizeof(nonce));
