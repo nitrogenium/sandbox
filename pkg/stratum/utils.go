@@ -63,6 +63,49 @@ func BuildHeader(work *Work, extraNonce2 string) ([]byte, error) {
 	return header, nil
 }
 
+// BuildHeaderWithDebug constructs header and returns debug info (coinbase, merkle)
+func BuildHeaderWithDebug(work *Work, extraNonce2 string) ([]byte, string, string, error) {
+	version, err := hex.DecodeString(work.Version)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("invalid version: %w", err)
+	}
+	prevHash, err := hex.DecodeString(work.PrevHash)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("invalid prevhash: %w", err)
+	}
+	coinbase := work.Coinbase1 + work.ExtraNonce1 + extraNonce2 + work.Coinbase2
+	coinbaseBytes, err := hex.DecodeString(coinbase)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("invalid coinbase: %w", err)
+	}
+	coinbaseHash := sha256d(coinbaseBytes)
+	merkleRoot := coinbaseHash
+	for _, branch := range work.MerkleBranch {
+		branchBytes, err := hex.DecodeString(branch)
+		if err != nil {
+			return nil, "", "", fmt.Errorf("invalid merkle branch: %w", err)
+		}
+		merkleRoot = sha256d(append(merkleRoot, branchBytes...))
+	}
+	ntime, err := hex.DecodeString(work.NTime)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("invalid ntime: %w", err)
+	}
+	nbits, err := hex.DecodeString(work.NBits)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("invalid nbits: %w", err)
+	}
+	header := make([]byte, 80)
+	copy(header[0:4], reverseBytes(version))
+	copy(header[4:36], reverseBytes(prevHash))
+	copy(header[36:68], reverseBytes(merkleRoot))
+	copy(header[68:72], reverseBytes(ntime))
+	copy(header[72:76], reverseBytes(nbits))
+	coinbaseHex := hex.EncodeToString(coinbaseBytes)
+	merkleHex := hex.EncodeToString(merkleRoot)
+	return header, coinbaseHex, merkleHex, nil
+}
+
 // DifficultyToTarget converts pool difficulty to 32-byte target
 func DifficultyToTarget(difficulty float64) []byte {
 	// Pool difficulty 1 = 0x00000000ffff0000000000000000000000000000000000000000000000000000

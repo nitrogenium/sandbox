@@ -169,11 +169,12 @@ func (m *Miner) mineWorker(workerID int) {
 		extraNonce2 := stratum.GenerateExtraNonce2(work.ExtraNonce2Size, en2Counter)
 
 		// Build header
-		header, err := stratum.BuildHeader(work, extraNonce2)
+		header, coinbaseHex, merkleHex, err := stratum.BuildHeaderWithDebug(work, extraNonce2)
 		if err != nil {
 			m.logger.Error("Failed to build header", zap.Error(err))
 			continue
 		}
+		m.logger.Debug("Header inputs", zap.String("coinbase", coinbaseHex), zap.String("merkle", merkleHex))
 
 		// Debug: check header
 		if len(header) != 80 {
