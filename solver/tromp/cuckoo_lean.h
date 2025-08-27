@@ -28,6 +28,9 @@ typedef struct {
     uint32_t nthreads;     // Number of threads
     uint32_t solutions;    // Number of solutions found
     proof_t proofs[MAXSOLS]; // Found solutions
+    // Abort/cancellation support
+    uint32_t abort_flag;   // non-zero to request abort
+    void* internal;        // internal context pointer for control
 } solver_ctx;
 
 // Initialize solver context
@@ -38,6 +41,9 @@ void cuckoo_setheader(solver_ctx* ctx, const uint8_t* header, uint32_t len);
 
 // Find cycles in nonce range
 int cuckoo_solve(solver_ctx* ctx);
+
+// Request abort of an in-flight solve
+void cuckoo_abort(solver_ctx* ctx);
 
 // Verify a solution
 int cuckoo_verify(const uint8_t* header, uint32_t header_len, uint32_t nonce, const uint32_t* proof);

@@ -11,6 +11,9 @@ package solver
 // Allocate/free helpers with external linkage for cgo
 solver_ctx* alloc_solver_ctx() { return (solver_ctx*)malloc(sizeof(solver_ctx)); }
 void free_solver_ctx(solver_ctx* p) { if (p) free(p); }
+// Forward declaration and wrapper for abort to satisfy cgo
+void cuckoo_abort(solver_ctx* ctx);
+void go_cuckoo_abort(solver_ctx* ctx) { cuckoo_abort(ctx); }
 */
 import "C"
 import (
@@ -82,6 +85,11 @@ func (s *Solver) Solve(baseNonce uint32, nonceRange uint32) []Solution {
 	}
 
 	return solutions
+}
+
+// Cancel requests to abort a running solve (best effort).
+func (s *Solver) Cancel() {
+	C.go_cuckoo_abort(&s.ctx)
 }
 
 // Verify checks if a solution is valid

@@ -100,6 +100,12 @@ func (m *Miner) Start() error {
 func (m *Miner) Stop() {
 	m.logger.Info("Stopping miner...")
 	m.mining.Store(false)
+	// Request cancellation of running solves first
+	for _, s := range m.solvers {
+		if s != nil {
+			s.Cancel()
+		}
+	}
 	close(m.stopCh)
 	m.client.Close()
 	m.wg.Wait()
@@ -141,6 +147,9 @@ func (m *Miner) mineWorker(workerID int) {
 
 	solver := m.solvers[workerID]
 
+	// Track worker's current base nonce across iterations
+	var currentNonce uint32 = uint32(workerID) * (1 << 24)
+
 	for m.mining.Load() {
 		// Get current work
 		m.workMutex.RLock()
@@ -176,8 +185,8 @@ func (m *Miner) mineWorker(workerID int) {
 		solver.SetHeader(header)
 
 		// Mine with nonce range
-		baseNonce := uint32(workerID) * (1 << 24) // Partition nonce space
-		nonceRange := uint32(1 << 14)             // Check 16384 nonces for faster stats
+		baseNonce := currentNonce     // Continue from last position
+		nonceRange := uint32(1 << 10) // 1024 nonces per iteration for frequent updates
 
 		solutions := solver.Solve(baseNonce, nonceRange)
 
@@ -215,6 +224,9 @@ func (m *Miner) mineWorker(workerID int) {
 		// Update stats
 		m.stats.CyclesTotal.Add(uint64(nonceRange))
 		m.stats.SolutionsTotal.Add(uint64(len(solutions)))
+
+		// Advance base nonce for next iteration (wrap-around on overflow is fine)
+		currentNonce += nonceRange
 
 		// Check if we should continue with same work
 		if !m.mining.Load() {

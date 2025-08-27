@@ -30,6 +30,8 @@ void cuckoo_init(solver_ctx* ctx) {
     memset(ctx, 0, sizeof(solver_ctx));
     ctx->nthreads = 1;
     ctx->nonce_range = 1;
+    ctx->abort_flag = 0;
+    ctx->internal = NULL;
 }
 
 void cuckoo_setheader(solver_ctx* ctx, const uint8_t* header, uint32_t len) {
@@ -45,6 +47,8 @@ int cuckoo_solve(solver_ctx* ctx) {
     // Create internal context
     internal_ctx* ictx = new internal_ctx;
     ictx->api_ctx = ctx;
+    ctx->internal = (void*)ictx;
+    ctx->abort_flag = 0;
     
     fprintf(stderr, "[DEBUG] cuckoo_solve: calculating ntrims\n");
     // Initialize Tromp's context
@@ -59,10 +63,12 @@ int cuckoo_solve(solver_ctx* ctx) {
     } catch (std::bad_alloc& e) {
         fprintf(stderr, "[ERROR] cuckoo_solve: failed to allocate cuckoo_ctx: %s\n", e.what());
         delete ictx;
+        ctx->internal = NULL;
         return 0;
     } catch (...) {
         fprintf(stderr, "[ERROR] cuckoo_solve: unknown error creating cuckoo_ctx\n");
         delete ictx;
+        ctx->internal = NULL;
         return 0;
     }
     
@@ -74,6 +80,9 @@ int cuckoo_solve(solver_ctx* ctx) {
     
     // Search through nonce range
     for (uint32_t r = 0; r < ctx->nonce_range && ctx->solutions < MAXSOLS; r++) {
+        if (ctx->abort_flag) {
+            break;
+        }
         // Set header and nonce
         ictx->tromp_ctx->setheadernonce((char*)ctx->header, ctx->header_len, ctx->nonce + r);
         ictx->tromp_ctx->barry.clear();
@@ -91,6 +100,7 @@ int cuckoo_solve(solver_ctx* ctx) {
                 delete[] ictx->threads;
                 delete ictx->tromp_ctx;
                 delete ictx;
+                ctx->internal = NULL;
                 return 0;
             }
         }
@@ -113,8 +123,23 @@ int cuckoo_solve(solver_ctx* ctx) {
     delete[] ictx->threads;
     delete ictx->tromp_ctx;
     delete ictx;
+    ctx->internal = NULL;
     
     return ctx->solutions;
+}
+
+void cuckoo_abort(solver_ctx* ctx) {
+    if (!ctx) return;
+    ctx->abort_flag = 1;
+    // Try to abort running round by aborting barrier
+    internal_ctx* ictx = (internal_ctx*)ctx->internal;
+    if (ictx && ictx->tromp_ctx) {
+        try {
+            ictx->tromp_ctx->abort();
+        } catch (...) {
+            // ignore
+        }
+    }
 }
 
 int cuckoo_verify(const uint8_t* header, uint32_t header_len, uint32_t nonce, const uint32_t* proof) {
