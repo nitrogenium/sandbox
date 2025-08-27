@@ -39,6 +39,9 @@ void cuckoo_init(solver_ctx* ctx);
 // Set header for mining
 void cuckoo_setheader(solver_ctx* ctx, const uint8_t* header, uint32_t len);
 
+// Set 32-byte header-derived key (SHA256d(header)) for siphash
+void cuckoo_sethdrkey(solver_ctx* ctx, const uint8_t* key32);
+
 // Find cycles in nonce range
 int cuckoo_solve(solver_ctx* ctx);
 

@@ -11,6 +11,8 @@ package solver
 // Allocate/free helpers with external linkage for cgo
 solver_ctx* alloc_solver_ctx() { return (solver_ctx*)malloc(sizeof(solver_ctx)); }
 void free_solver_ctx(solver_ctx* p) { if (p) free(p); }
+// Forward declarations for new APIs
+void cuckoo_sethdrkey(solver_ctx* ctx, const uint8_t* key32);
 // Forward declaration and wrapper for abort to satisfy cgo
 void cuckoo_abort(solver_ctx* ctx);
 void go_cuckoo_abort(solver_ctx* ctx) { cuckoo_abort(ctx); }
@@ -57,7 +59,10 @@ func (s *Solver) SetHeader(header []byte) {
 	if len(header) == 0 {
 		panic("SetHeader: empty header")
 	}
-	C.cuckoo_setheader(&s.ctx, (*C.uint8_t)(unsafe.Pointer(&header[0])), C.uint32_t(len(header)))
+	// Derive 32-byte key as SHA256d(header), matching Java reference
+	h1 := sha256.Sum256(header)
+	h2 := sha256.Sum256(h1[:])
+	C.cuckoo_sethdrkey(&s.ctx, (*C.uint8_t)(unsafe.Pointer(&h2[0])))
 }
 
 // Solve searches for Cuckoo cycles in the given nonce range

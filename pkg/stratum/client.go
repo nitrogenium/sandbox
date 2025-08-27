@@ -3,12 +3,14 @@ package stratum
 
 import (
 	"bufio"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"go.uber.org/zap"
 )
@@ -222,13 +224,13 @@ func (c *Client) authorize() error {
 
 // SubmitWork submits a found solution
 func (c *Client) SubmitWork(work *Work, nonce2 string, nTime string, nonce uint32, solution []uint32) error {
-	// Convert solution to comma-separated string
+	// Convert solution to comma-separated decimal string
 	solStr := ""
 	for i, s := range solution {
 		if i > 0 {
 			solStr += ","
 		}
-		solStr += fmt.Sprintf("%x", s)
+		solStr += fmt.Sprintf("%d", s)
 	}
 
 	req := &Request{
@@ -239,7 +241,7 @@ func (c *Client) SubmitWork(work *Work, nonce2 string, nTime string, nonce uint3
 			work.JobID,
 			nonce2,
 			nTime,
-			fmt.Sprintf("%08x", nonce),
+			fmt.Sprintf("%08x", binary.LittleEndian.Uint32((*[4]byte)(unsafe.Pointer(&nonce))[:])),
 			solStr,
 		},
 	}

@@ -40,6 +40,12 @@ void cuckoo_setheader(solver_ctx* ctx, const uint8_t* header, uint32_t len) {
     ctx->header_len = len;
 }
 
+void cuckoo_sethdrkey(solver_ctx* ctx, const uint8_t* key32) {
+    // Store key in the beginning of header buffer for reuse
+    memcpy(ctx->header, key32, 32);
+    ctx->header_len = 32; // denotes key length for our use
+}
+
 int cuckoo_solve(solver_ctx* ctx) {
     fprintf(stderr, "[DEBUG] cuckoo_solve: starting, nthreads=%u, nonce=%u, range=%u\n", 
             ctx->nthreads, ctx->nonce, ctx->nonce_range);
@@ -83,8 +89,13 @@ int cuckoo_solve(solver_ctx* ctx) {
         if (ctx->abort_flag) {
             break;
         }
-        // Set header and nonce
-        ictx->tromp_ctx->setheadernonce((char*)ctx->header, ctx->header_len, ctx->nonce + r);
+        // Initialize siphash keys directly from provided key32
+        // Using first 32 bytes of ctx->header as key buffer
+        ictx->tromp_ctx->sip_keys.setkeys((const char*)ctx->header);
+        // Reset state for this round
+        ictx->tromp_ctx->alive->clear();
+        ictx->tromp_ctx->nsols = 0;
+        ictx->tromp_ctx->nonce = ctx->nonce + r;
         ictx->tromp_ctx->barry.clear();
         
         fprintf(stderr, "[DEBUG] cuckoo_solve: launching %u threads for nonce %u\n", ctx->nthreads, ctx->nonce + r);
