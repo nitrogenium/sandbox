@@ -1,0 +1,16 @@
+# Makefile for testing Tromp's solver directly
+
+CXX = g++
+CXXFLAGS = -g -O0 -march=native -std=c++14 -Wall -pthread
+INCLUDES = -I. -Icuckoo-orig/src -Icuckoo-orig/src/crypto
+
+test_tromp: test_tromp.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) test_tromp.cpp -o test_tromp
+
+run: test_tromp
+	./test_tromp
+
+clean:
+	rm -f test_tromp
+
+.PHONY: run clean

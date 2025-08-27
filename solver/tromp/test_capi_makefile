@@ -1,0 +1,26 @@
+# Makefile for testing C API
+
+CC = gcc
+CXX = g++
+CFLAGS = -g -O0 -march=native -Wall
+CXXFLAGS = -g -O0 -march=native -std=c++14 -Wall -pthread
+INCLUDES = -I. -Icuckoo-orig/src -Icuckoo-orig/src/crypto
+
+# First build the library
+libcuckoo_lean.a: cuckoo_lean.o
+	ar rcs $@ $^
+
+cuckoo_lean.o: cuckoo_lean.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Then build the test
+test_capi: test_capi.c libcuckoo_lean.a
+	$(CC) $(CFLAGS) $(INCLUDES) test_capi.c -L. -lcuckoo_lean -lstdc++ -lpthread -o test_capi
+
+run: test_capi
+	./test_capi
+
+clean:
+	rm -f test_capi libcuckoo_lean.a cuckoo_lean.o
+
+.PHONY: run clean

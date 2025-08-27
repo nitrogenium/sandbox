@@ -5,23 +5,20 @@
 #include <string.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <stdio.h>
 
 // Include Tromp's implementation with our parameters
 #define HEADERLEN 80
 #include "cuckoo-orig/src/cuckoo/lean.hpp"
 #include "cuckoo-orig/src/crypto/blake2b-ref.c"
 
-// Thread context for parallel solving
-struct solver_thread_ctx {
-    int id;
-    cuckoo_ctx* ctx;
-    pthread_t thread;
-};
+// Forward declaration from lean.hpp
+void *worker(void *vp);
 
 // Wrapper context that includes Tromp's context
 struct internal_ctx {
     cuckoo_ctx* tromp_ctx;
-    solver_thread_ctx* threads;
+    thread_ctx* threads;
     solver_ctx* api_ctx;
 };
 
@@ -42,16 +39,36 @@ void cuckoo_setheader(solver_ctx* ctx, const uint8_t* header, uint32_t len) {
 }
 
 int cuckoo_solve(solver_ctx* ctx) {
+    fprintf(stderr, "[DEBUG] cuckoo_solve: starting, nthreads=%u, nonce=%u, range=%u\n", 
+            ctx->nthreads, ctx->nonce, ctx->nonce_range);
+    
     // Create internal context
     internal_ctx* ictx = new internal_ctx;
     ictx->api_ctx = ctx;
     
+    fprintf(stderr, "[DEBUG] cuckoo_solve: calculating ntrims\n");
     // Initialize Tromp's context
     int ntrims = 2 + (PART_BITS+3)*(PART_BITS+4);
-    ictx->tromp_ctx = new cuckoo_ctx(ctx->nthreads, ntrims, MAXSOLS);
     
+    fprintf(stderr, "[DEBUG] cuckoo_solve: creating cuckoo_ctx with nthreads=%u, ntrims=%d\n", 
+            ctx->nthreads, ntrims);
+    
+    try {
+        ictx->tromp_ctx = new cuckoo_ctx(ctx->nthreads, ntrims, MAXSOLS);
+        fprintf(stderr, "[DEBUG] cuckoo_solve: cuckoo_ctx created successfully\n");
+    } catch (std::bad_alloc& e) {
+        fprintf(stderr, "[ERROR] cuckoo_solve: failed to allocate cuckoo_ctx: %s\n", e.what());
+        delete ictx;
+        return 0;
+    } catch (...) {
+        fprintf(stderr, "[ERROR] cuckoo_solve: unknown error creating cuckoo_ctx\n");
+        delete ictx;
+        return 0;
+    }
+    
+    fprintf(stderr, "[DEBUG] cuckoo_solve: allocating thread contexts\n");
     // Allocate thread contexts
-    ictx->threads = new solver_thread_ctx[ctx->nthreads];
+    ictx->threads = new thread_ctx[ctx->nthreads];
     
     ctx->solutions = 0;
     
@@ -61,11 +78,21 @@ int cuckoo_solve(solver_ctx* ctx) {
         ictx->tromp_ctx->setheadernonce((char*)ctx->header, ctx->header_len, ctx->nonce + r);
         ictx->tromp_ctx->barry.clear();
         
+        fprintf(stderr, "[DEBUG] cuckoo_solve: launching %u threads for nonce %u\n", ctx->nthreads, ctx->nonce + r);
         // Launch threads
         for (uint32_t t = 0; t < ctx->nthreads; t++) {
             ictx->threads[t].id = t;
             ictx->threads[t].ctx = ictx->tromp_ctx;
-            pthread_create(&ictx->threads[t].thread, NULL, worker, (void*)&ictx->threads[t]);
+            fprintf(stderr, "[DEBUG] cuckoo_solve: creating thread %u\n", t);
+            int err = pthread_create(&ictx->threads[t].thread, NULL, worker, (void*)&ictx->threads[t]);
+            if (err) {
+                fprintf(stderr, "[ERROR] cuckoo_solve: failed to create thread %u: %d\n", t, err);
+                // Handle thread creation error
+                delete[] ictx->threads;
+                delete ictx->tromp_ctx;
+                delete ictx;
+                return 0;
+            }
         }
         
         // Wait for threads
