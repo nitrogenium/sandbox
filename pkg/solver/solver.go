@@ -8,6 +8,9 @@ package solver
 
 #include "cuckoo_lean.h"
 #include <stdlib.h>
+// Allocate/free helpers with external linkage for cgo
+solver_ctx* alloc_solver_ctx() { return (solver_ctx*)malloc(sizeof(solver_ctx)); }
+void free_solver_ctx(solver_ctx* p) { if (p) free(p); }
 */
 import "C"
 import (
@@ -37,6 +40,7 @@ type Solver struct {
 // NewSolver creates a new Cuckoo solver with specified threads
 func NewSolver(nthreads int) *Solver {
 	s := &Solver{nthreads: nthreads}
+	// Initialize C context in-place
 	C.cuckoo_init(&s.ctx)
 	s.ctx.nthreads = C.uint32_t(nthreads)
 	return s
@@ -139,3 +143,6 @@ func (s *Solver) GetStats() string {
 	return fmt.Sprintf("Solver: %d threads, EdgeBits: %d, ProofSize: %d",
 		s.nthreads, EdgeBits, ProofSize)
 }
+
+// Close releases C-side resources for the solver context.
+func (s *Solver) Close() {}

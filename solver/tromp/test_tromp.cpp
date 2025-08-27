@@ -51,7 +51,12 @@ int main() {
     worker(&tc);
     printf("✓ Worker completed\n");
     
-    printf("Solutions found: %d\n", ctx->nsols.load());
+    // Print number of solutions for both ATOMIC and non-ATOMIC builds
+#ifdef ATOMIC
+    printf("Solutions found: %u\n", ctx->nsols.load());
+#else
+    printf("Solutions found: %u\n", ctx->nsols);
+#endif
     
     // Cleanup
     delete ctx;

@@ -103,6 +103,12 @@ func (m *Miner) Stop() {
 	close(m.stopCh)
 	m.client.Close()
 	m.wg.Wait()
+	// Release solver resources
+	for _, s := range m.solvers {
+		if s != nil {
+			s.Close()
+		}
+	}
 }
 
 func (m *Miner) handleNewWork(work *stratum.Work) {
