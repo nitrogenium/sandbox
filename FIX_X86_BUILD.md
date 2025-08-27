@@ -49,9 +49,8 @@ ar rcs libcuckoo_lean.a cuckoo_lean.o
 
 ## Структура файлов:
 
-- `cuckoo_lean.cpp` - для x86_64 (полный алгоритм)
-- `cuckoo_simple.cpp` - для ARM/Mac (упрощённая версия)
-- Makefile автоматически выбирает правильный файл
+- `cuckoo_lean.cpp` - единственный солвер (полный алгоритм)
+- Makefile компилирует cuckoo_lean.cpp для всех архитектур
 
 ## Проверка архитектуры:
 ```bash

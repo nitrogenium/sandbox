@@ -14,9 +14,7 @@ PACKAGE_DIR="$TEMP_DIR/go-cuckoo-miner"
 mkdir -p "$PACKAGE_DIR"
 cp -r cmd pkg solver go.mod go.sum build_x86.sh BUILD_X86.md QUICKSTART_X86.md "$PACKAGE_DIR/" 2>/dev/null || true
 
-# Remove ARM-specific files
-rm -f "$PACKAGE_DIR/solver/tromp/cuckoo_simple.cpp"
-rm -f "$PACKAGE_DIR/solver/tromp/cuckoo_simple.o"
+# Remove build artifacts
 rm -f "$PACKAGE_DIR/solver/tromp/libcuckoo_lean.a"
 
 # Clean build artifacts

@@ -134,8 +134,6 @@ func (m *Miner) mineWorker(workerID int) {
 	defer m.wg.Done()
 
 	solver := m.solvers[workerID]
-	cycleCount := uint64(0)
-	solutionCount := uint64(0)
 
 	for m.mining.Load() {
 		// Get current work
@@ -159,6 +157,12 @@ func (m *Miner) mineWorker(workerID int) {
 			continue
 		}
 
+		// Debug: check header
+		if len(header) != 80 {
+			m.logger.Error("Invalid header length", zap.Int("length", len(header)))
+			continue
+		}
+
 		// Update nTime if needed
 		ntime := work.NTime
 
@@ -170,11 +174,9 @@ func (m *Miner) mineWorker(workerID int) {
 		nonceRange := uint32(1 << 16)             // Check 65536 nonces
 
 		solutions := solver.Solve(baseNonce, nonceRange)
-		cycleCount += uint64(nonceRange)
 
 		// Check and submit solutions
 		for _, sol := range solutions {
-			solutionCount++
 
 			// Verify solution meets target
 			hash := pkgsolver.HashSolution(header, baseNonce, sol.Nonce)
@@ -194,8 +196,8 @@ func (m *Miner) mineWorker(workerID int) {
 		}
 
 		// Update stats
-		m.stats.CyclesTotal.Add(cycleCount)
-		m.stats.SolutionsTotal.Add(solutionCount)
+		m.stats.CyclesTotal.Add(uint64(nonceRange))
+		m.stats.SolutionsTotal.Add(uint64(len(solutions)))
 
 		// Check if we should continue with same work
 		if !m.mining.Load() {

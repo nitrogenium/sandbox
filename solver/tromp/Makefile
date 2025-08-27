@@ -19,12 +19,8 @@ CFLAGS = -O3 $(ARCH_FLAGS) -std=c11 -Wall -Wno-deprecated-declarations
 CXXFLAGS = -O3 $(ARCH_FLAGS) -std=c++14 -Wall -Wno-deprecated-declarations -pthread $(CPPFLAGS)
 INCLUDES = -I. -Icuckoo-orig/src -Icuckoo-orig/src/crypto
 
-# Source files
-ifeq ($(UNAME_M),arm64)
-    SOURCES = cuckoo_simple.cpp
-else
-    SOURCES = cuckoo_lean.cpp
-endif
+# Source files - always use lean solver
+SOURCES = cuckoo_lean.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 TARGET = libcuckoo_lean.a
 

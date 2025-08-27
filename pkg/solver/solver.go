@@ -47,6 +47,9 @@ func (s *Solver) SetHeader(header []byte) {
 	if len(header) > 80 {
 		header = header[:80]
 	}
+	if len(header) == 0 {
+		panic("SetHeader: empty header")
+	}
 	C.cuckoo_setheader(&s.ctx, (*C.uint8_t)(unsafe.Pointer(&header[0])), C.uint32_t(len(header)))
 }
 
